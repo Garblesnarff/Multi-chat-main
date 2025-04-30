@@ -17,13 +17,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const reasoningCheckbox = document.getElementById('reasoning-checkbox');
     const streamingCheckbox = document.getElementById('streaming-checkbox');
 
-    function addMessage(content, isUser = false, isError = false) {
+    // Enhanced addMessage: supports user/AI, error, and provider/model label
+    function addMessage(content, isUser = false, isError = false, provider = null, model = null) {
         const messageDiv = document.createElement('div');
-        messageDiv.classList.add('chat-message', isUser ? 'user-message' : 'bot-message');
-        if (isError) {
-            messageDiv.classList.add('error-message');
+        messageDiv.classList.add('flex', isUser ? 'justify-end' : 'justify-start');
+        // Bubble
+        const bubble = document.createElement('div');
+        bubble.classList.add(
+            'max-w-[75%]',
+            'rounded-xl',
+            'px-4',
+            'py-2',
+            'mb-1',
+            'shadow',
+            'whitespace-pre-line',
+            'break-words',
+            ...(
+                isUser
+                    ? ['bg-blue-500', 'text-white', 'self-end']
+                    : ['bg-gray-100', 'text-gray-900', 'self-start']
+            ),
+            ...(
+                isError
+                    ? ['border', 'border-red-400', 'text-red-700', 'bg-red-50']
+                    : []
+            )
+        );
+        // Provider/model label for AI
+        if (!isUser && provider && model) {
+            const label = document.createElement('div');
+            label.className = 'text-xs font-semibold text-purple-600 mb-1';
+            label.textContent = `${provider}: ${model}`;
+            bubble.appendChild(label);
         }
-        messageDiv.textContent = content;
+        // Message content
+        const contentDiv = document.createElement('div');
+        contentDiv.textContent = content;
+        bubble.appendChild(contentDiv);
+        messageDiv.appendChild(bubble);
         chatContainer.appendChild(messageDiv);
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
@@ -39,19 +70,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return selectedProviders;
     }
 
+    // Modified displayComparison: append each AI response as a bubble
     function displayComparison(responses) {
-        comparisonContainer.innerHTML = '';
-        comparisonContainer.classList.remove('hidden');
-
-        Object.entries(responses).forEach(([provider, response]) => {
-            const providerDiv = document.createElement('div');
-            providerDiv.classList.add('mb-4');
-            providerDiv.innerHTML = `
-                <h3 class="font-bold text-lg mb-2">${provider.charAt(0).toUpperCase() + provider.slice(1)}</h3>
-                <p class="bg-white rounded p-2 ${response.startsWith('Error:') ? 'text-red-500' : ''}">${response}</p>
-            `;
-            comparisonContainer.appendChild(providerDiv);
-        });
+        const selectedProviders = getSelectedProviders();
+        for (const [provider, data] of Object.entries(responses)) {
+            // If response is an object with model & content, use them; else fallback
+            let model = null, content = '';
+            if (typeof data === 'object' && data !== null && ('model' in data) && ('content' in data)) {
+                model = data.model;
+                content = data.content;
+            } else {
+                // Use the selected model from the dropdown for this provider
+                model = selectedProviders[provider] || '';
+                content = data;
+            }
+            addMessage(content, false, String(content).startsWith('Error:'), provider.charAt(0).toUpperCase() + provider.slice(1), model);
+        }
     }
 
     async function sendMessage() {
