@@ -304,9 +304,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        chatContainer.innerHTML = '';
-        comparisonContainer.innerHTML = '';
-        comparisonContainer.classList.add('hidden');
+        // Clear all response panels
+        if (responseGrid && responseGrid.children.length > 0) {
+            Array.from(responseGrid.children).forEach(panel => {
+                panel.querySelector('.messages').innerHTML = '';
+            });
+        }
+        // Fallback: clear legacy chat container if present
+        if (typeof chatContainer !== 'undefined' && chatContainer) {
+            chatContainer.innerHTML = '';
+        }
         addMessage('Conversation history cleared.');
     }
 
