@@ -38,6 +38,7 @@ class GroqProvider(LLMProvider):
             max_history (int): Maximum conversation history length.
         """
         super().__init__(max_history)
+        # Use Groq SDK directly as per official quickstart
         self.client = Groq(api_key=os.environ.get('GROQ_API_KEY'))
 
     def generate_response(self, message, model):
