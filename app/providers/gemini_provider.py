@@ -16,7 +16,7 @@ Dependencies:
 import os
 import logging
 
-import google.generativeai as genai
+import google.genai as genai
 
 from app.providers.base import LLMProvider
 
@@ -38,7 +38,8 @@ class GeminiProvider(LLMProvider):
             max_history (int): Maximum conversation history length.
         """
         super().__init__(max_history)
-        genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+        self.api_key = os.environ.get('GEMINI_API_KEY')
+        self.client = genai.GenerativeModel(api_key=self.api_key)
 
     def generate_response(self, message, model):
         """
@@ -61,9 +62,9 @@ class GeminiProvider(LLMProvider):
                 elif entry['role'] == 'assistant':
                     gemini_history.append({"role": "model", "parts": [{"text": entry['content']}]})
 
-            genai_model = genai.GenerativeModel(model)
-            chat = genai_model.start_chat(history=gemini_history)
-            response = chat.send_message(message)
+            model_instance = genai.GenerativeModel(name=model, api_key=self.api_key)
+            chat = model_instance.start_chat(history=gemini_history)
+            response = chat.send_message(content=message)
             self.add_to_history("assistant", response.text)
             return response.text
         except Exception as e:
@@ -85,11 +86,11 @@ class GeminiProvider(LLMProvider):
             self.add_to_history("user", message)
             
             reasoning_prompt = f"Reason step-by-step about the following message: {message}"
-            genai_model = genai.GenerativeModel(model)
-            reasoning_response = genai_model.generate_content(reasoning_prompt).text
+            model_instance = genai.GenerativeModel(name=model, api_key=self.api_key)
+            reasoning_response = model_instance.generate_content(contents=reasoning_prompt).text
 
             final_prompt = f"Based on the following reasoning, provide a final response:\n\nReasoning:\n{reasoning_response}\n\nFinal response:"
-            final_response = genai_model.generate_content(final_prompt).text
+            final_response = model_instance.generate_content(contents=final_prompt).text
 
             self.add_to_history("assistant", final_response)
             return f"Reasoning:\n{reasoning_response}\n\nFinal Response:\n{final_response}"
@@ -119,23 +120,23 @@ class GeminiProvider(LLMProvider):
                 elif entry['role'] == 'assistant':
                     gemini_history.append({"role": "model", "parts": [{"text": entry['content']}]})
 
-            genai_model = genai.GenerativeModel(model)
+            model_instance = genai.GenerativeModel(name=model, api_key=self.api_key)
             
             if use_reasoning:
                 reasoning_prompt = f"Reason step-by-step about the following message: {message}"
                 yield "Reasoning:\n"
-                for chunk in genai_model.generate_content(reasoning_prompt, stream=True):
+                for chunk in model_instance.generate_content(contents=reasoning_prompt, stream=True):
                     if chunk.text:
                         yield chunk.text
                 
                 final_prompt = f"Based on the reasoning, provide a final response."
                 yield "\n\nFinal Response:\n"
-                for chunk in genai_model.generate_content(final_prompt, stream=True):
+                for chunk in model_instance.generate_content(contents=final_prompt, stream=True):
                     if chunk.text:
                         yield chunk.text
             else:
-                chat = genai_model.start_chat(history=gemini_history)
-                for chunk in chat.send_message(message, stream=True):
+                chat = model_instance.start_chat(history=gemini_history)
+                for chunk in chat.send_message(content=message, stream=True):
                     if chunk.text:
                         yield chunk.text
         except Exception as e:
