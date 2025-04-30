@@ -21,7 +21,14 @@ See also: /app/routes/chat_routes.py for backend chat logic
 <body class="bg-gradient-to-r from-blue-500 to-purple-600 min-h-screen flex items-center justify-center">
     <div class="bg-white rounded-lg shadow-lg p-8 max-w-4xl w-full">
         <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">EchoChat</h1>
-        <div id="chat-container" class="bg-gray-100 rounded-lg p-4 h-96 overflow-y-auto mb-6 flex flex-col space-y-4"></div>
+        <div id="response-grid" class="grid gap-4 mb-6" style="min-height: 24rem;"></div>
+        <!-- Response Panel Template (hidden, for cloning in JS) -->
+        <div id="response-panel-template" class="hidden">
+            <div class="response-panel bg-white rounded-lg shadow p-3 flex flex-col h-96">
+                <div class="provider-header font-bold text-white text-sm px-3 py-2 rounded-t-lg mb-2" style="background-color: #6366f1;">Provider Name</div>
+                <div class="messages flex-1 overflow-y-auto space-y-2 px-1"></div>
+            </div>
+        </div>
         <div class="flex flex-col md:flex-row md:space-x-2 mb-4 space-y-2 md:space-y-0 items-center">
             <div id="provider-selects" class="flex space-x-2 mb-2 md:mb-0">
                 <div>

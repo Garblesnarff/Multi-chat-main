@@ -16,12 +16,75 @@ document.addEventListener('DOMContentLoaded', () => {
     const comparisonContainer = document.getElementById('comparison-container');
     const reasoningCheckbox = document.getElementById('reasoning-checkbox');
     const streamingCheckbox = document.getElementById('streaming-checkbox');
+    const responseGrid = document.getElementById('response-grid');
+    const responsePanelTemplate = document.getElementById('response-panel-template');
 
     // Enhanced addMessage: supports user/AI, error, and provider/model label
     function addMessage(content, isUser = false, isError = false, provider = null, model = null) {
+        if (responseGrid && responseGrid.children.length > 0) {
+            // Route to correct panel(s)
+            if (isUser) {
+                // Add user message to all panels
+                Array.from(responseGrid.children).forEach(panel => {
+                    const msg = createMessageBubble(content, true, isError, provider, model);
+                    panel.querySelector('.messages').appendChild(msg);
+                    panel.querySelector('.messages').scrollTop = panel.querySelector('.messages').scrollHeight;
+                });
+            } else if (provider) {
+                // Add provider response only to its panel
+                const panel = Array.from(responseGrid.children).find(p => p.dataset.provider === provider);
+                if (panel) {
+                    const msg = createMessageBubble(content, false, isError, provider, model);
+                    panel.querySelector('.messages').appendChild(msg);
+                    panel.querySelector('.messages').scrollTop = panel.querySelector('.messages').scrollHeight;
+                }
+            }
+        } else {
+            // Fallback: old chatContainer
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('flex', isUser ? 'justify-end' : 'justify-start');
+            // Bubble
+            const bubble = document.createElement('div');
+            bubble.classList.add(
+                'max-w-[75%]',
+                'rounded-xl',
+                'px-4',
+                'py-2',
+                'mb-1',
+                'shadow',
+                'whitespace-pre-line',
+                'break-words',
+                ...(
+                    isUser
+                        ? ['bg-blue-500', 'text-white', 'self-end']
+                        : ['bg-gray-100', 'text-gray-900', 'self-start']
+                ),
+                ...(
+                    isError
+                        ? ['border', 'border-red-400', 'text-red-700', 'bg-red-50']
+                        : []
+                )
+            );
+            if (!isUser && provider && model) {
+                const label = document.createElement('div');
+                label.className = 'text-xs font-semibold text-purple-600 mb-1';
+                label.textContent = `${provider}: ${model}`;
+                bubble.appendChild(label);
+            }
+            const contentDiv = document.createElement('div');
+            contentDiv.textContent = content;
+            bubble.appendChild(contentDiv);
+            messageDiv.appendChild(bubble);
+            if (chatContainer) {
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+    }
+
+    function createMessageBubble(content, isUser, isError, provider, model) {
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('flex', isUser ? 'justify-end' : 'justify-start');
-        // Bubble
         const bubble = document.createElement('div');
         bubble.classList.add(
             'max-w-[75%]',
@@ -32,31 +95,56 @@ document.addEventListener('DOMContentLoaded', () => {
             'shadow',
             'whitespace-pre-line',
             'break-words',
-            ...(
-                isUser
-                    ? ['bg-blue-500', 'text-white', 'self-end']
-                    : ['bg-gray-100', 'text-gray-900', 'self-start']
-            ),
-            ...(
-                isError
-                    ? ['border', 'border-red-400', 'text-red-700', 'bg-red-50']
-                    : []
-            )
+            ...(isUser ? ['bg-blue-500', 'text-white', 'self-end'] : ['bg-gray-100', 'text-gray-900', 'self-start']),
+            ...(isError ? ['border', 'border-red-400', 'text-red-700', 'bg-red-50'] : [])
         );
-        // Provider/model label for AI
         if (!isUser && provider && model) {
             const label = document.createElement('div');
             label.className = 'text-xs font-semibold text-purple-600 mb-1';
             label.textContent = `${provider}: ${model}`;
             bubble.appendChild(label);
         }
-        // Message content
         const contentDiv = document.createElement('div');
         contentDiv.textContent = content;
         bubble.appendChild(contentDiv);
         messageDiv.appendChild(bubble);
-        chatContainer.appendChild(messageDiv);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        return messageDiv;
+    }
+
+    function getProviderColor(provider) {
+        // Assign a consistent color per provider (Tailwind palette)
+        const colorMap = {
+            groq: '#6366f1',      // Indigo-500
+            gemini: '#06b6d4',    // Cyan-500
+            cerebras: '#f59e42',  // Orange-400
+        };
+        return colorMap[provider] || '#6366f1';
+    }
+
+    function updateResponseGrid() {
+        // Clear grid
+        responseGrid.innerHTML = '';
+        const selectedProviders = getSelectedProviders();
+        const providerKeys = Object.keys(selectedProviders);
+        if (providerKeys.length === 0) {
+            responseGrid.className = 'grid gap-4 mb-6';
+            return;
+        }
+        // Set grid columns
+        responseGrid.className = `grid gap-4 mb-6 grid-cols-${providerKeys.length}`;
+        providerKeys.forEach(provider => {
+            // Clone panel template
+            const panel = responsePanelTemplate.firstElementChild.cloneNode(true);
+            panel.classList.remove('hidden');
+            panel.dataset.provider = provider;
+            // Set provider header
+            const header = panel.querySelector('.provider-header');
+            header.textContent = provider.charAt(0).toUpperCase() + provider.slice(1);
+            header.style.backgroundColor = getProviderColor(provider);
+            // Clear messages
+            panel.querySelector('.messages').innerHTML = '';
+            responseGrid.appendChild(panel);
+        });
     }
 
     function getSelectedProviders() {
@@ -89,9 +177,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function sendMessage() {
-        console.log('sendMessage function called');
+        updateResponseGrid();
         const message = userInput.value.trim();
-        console.log('User input:', message);
         const selectedProviders = getSelectedProviders();
         const useReasoning = reasoningCheckbox && reasoningCheckbox.checked;
         const useStreaming = streamingCheckbox && streamingCheckbox.checked;
@@ -114,22 +201,27 @@ document.addEventListener('DOMContentLoaded', () => {
                         currentProvider = '';
                     } else if (currentProvider === '') {
                         currentProvider = event.data;
-                        if (!providerResponses[currentProvider]) {
-                            providerResponses[currentProvider] = '';
-                            const providerDiv = document.createElement('div');
-                            providerDiv.id = `streaming-${currentProvider}`;
-                            providerDiv.innerHTML = `
-                                <h3 class="font-bold text-lg mb-2">${currentProvider.charAt(0).toUpperCase() + currentProvider.slice(1)}</h3>
-                                <p class="bg-white rounded p-2"></p>
-                            `;
-                            comparisonContainer.appendChild(providerDiv);
-                        }
+                        providerResponses[currentProvider] = '';
                     } else {
                         providerResponses[currentProvider] += event.data;
-                        const providerDiv = document.getElementById(`streaming-${currentProvider}`);
-                        if (providerDiv) {
-                            const responseP = providerDiv.querySelector('p');
-                            responseP.textContent = providerResponses[currentProvider];
+                        // Update in the correct panel
+                        const panel = Array.from(responseGrid.children).find(p => p.dataset.provider === currentProvider);
+                        if (panel) {
+                            let msgList = panel.querySelector('.messages');
+                            let lastMsg = msgList.lastElementChild;
+                            if (!lastMsg || !lastMsg.classList.contains('ai-stream')) {
+                                // New streaming bubble
+                                const bubble = document.createElement('div');
+                                bubble.className = 'ai-stream flex justify-start';
+                                const inner = document.createElement('div');
+                                inner.className = 'max-w-[75%] rounded-xl px-4 py-2 mb-1 shadow whitespace-pre-line break-words bg-gray-100 text-gray-900 self-start';
+                                inner.textContent = '';
+                                bubble.appendChild(inner);
+                                msgList.appendChild(bubble);
+                                lastMsg = bubble;
+                            }
+                            lastMsg.querySelector('div').textContent = providerResponses[currentProvider];
+                            msgList.scrollTop = msgList.scrollHeight;
                         }
                     }
                 };
@@ -159,7 +251,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (data.error) {
                             addMessage(`Error: ${data.error}`, false, true);
                         } else {
-                            displayComparison(data.responses);
+                            // Route each response to its panel
+                            const responses = data.responses;
+                            Object.entries(responses).forEach(([provider, resp]) => {
+                                let model = null, content = '';
+                                if (typeof resp === 'object' && resp !== null && ('model' in resp) && ('content' in resp)) {
+                                    model = resp.model;
+                                    content = resp.content;
+                                } else {
+                                    model = selectedProviders[provider] || '';
+                                    content = resp;
+                                }
+                                addMessage(content, false, String(content).startsWith('Error:'), provider, model);
+                            });
                         }
                     } else {
                         const errorData = await response.json();
@@ -206,6 +310,10 @@ document.addEventListener('DOMContentLoaded', () => {
         addMessage('Conversation history cleared.');
     }
 
+    providerSelects.forEach(select => {
+        select.addEventListener('change', updateResponseGrid);
+    });
+
     if (sendBtn) {
         sendBtn.addEventListener('click', () => {
             console.log('Send button clicked');
@@ -225,4 +333,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (clearHistoryBtn) {
         clearHistoryBtn.addEventListener('click', clearHistory);
     }
+
+    updateResponseGrid();
 });
