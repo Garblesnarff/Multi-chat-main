@@ -11,7 +11,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pip install -r requirements.txt"
+args = "python -m pip install -r requirements.txt"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
@@ -26,11 +26,11 @@ agentRequireRestartOnSave = false
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python3 main.py"
+args = "python main.py"
 waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "python3 main.py"]
+run = ["sh", "-c", "python main.py"]
 
 [[ports]]
 localPort = 5000
