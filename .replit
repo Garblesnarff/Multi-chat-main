@@ -11,7 +11,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pip3 install -r requirements.txt"
+args = "pip install -r requirements.txt"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
