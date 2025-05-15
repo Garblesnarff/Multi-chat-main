@@ -1,5 +1,3 @@
-modules = ["python-3.11"]
-
 [nix]
 channel = "stable-24_05"
 
@@ -10,6 +8,10 @@ runButton = "Project"
 name = "Project"
 mode = "parallel"
 author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install -r requirements.txt"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
